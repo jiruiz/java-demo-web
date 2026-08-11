@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar alumno</title>
+</head>
+<body>
+
+<h1>Registrar alumno</h1>
+
+<form action="/alumnos" method="post">
+    <div>
+        <label for="dni">DNI:</label>
+        <input type="number" id="dni" name="dni" required>
+    </div>
+
+    <div>
+        <label for="nombre">Nombre:</label>
+        <input type="text" id="nombre" name="nombre" required>
+    </div>
+
+    <div>
+        <label for="apellido">Apellido:</label>
+        <input type="text" id="apellido" name="apellido" required>
+    </div>
+
+    <div>
+        <label for="fechaNacimiento">Fecha de nacimiento:</label>
+        <input type="date" id="fechaNacimiento"
+               name="fechaNacimiento" required>
+    </div>
+
+    <div>
+        <label for="estado">Estado:</label>
+        <input type="text" id="estado" name="estado" required>
+    </div>
+
+    <div>
+        <label for="promedio">Promedio:</label>
+        <input type="number" step="0.01" id="promedio"
+               name="promedio" required>
+    </div>
+
+    <div>
+        <label for="cantidadMateriasAprobadas">
+            Cantidad de materias aprobadas:
+        </label>
+        <input type="number" id="cantidadMateriasAprobadas"
+               name="cantidadMateriasAprobadas" required>
+    </div>
+
+    <div>
+        <label for="fechaIngreso">Fecha de ingreso:</label>
+        <input type="date" id="fechaIngreso"
+               name="fechaIngreso" required>
+    </div>
+
+    <button type="submit">Guardar alumno</button>
+</form>
+
+</body>
+</html>
