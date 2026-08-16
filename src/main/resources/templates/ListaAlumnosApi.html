@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Lista de alumnos</title>
+    <link rel="stylesheet" href="/css/estilos.css">
+</head>
+
+<body>
+
+    <h1>Lista de alumnos</h1>
+
+    <p
+        data-th-if="${mensaje}"
+        data-th-text="${mensaje}">
+    </p>
+
+    <table border="1">
+        <thead>
+            <tr>
+                <th>DNI</th>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>Promedio</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            <tr data-th-each="alumno : ${alumnos}">
+
+                <td data-th-text="${alumno.dni}"></td>
+
+                <td data-th-text="${alumno.nombre}"></td>
+
+                <td data-th-text="${alumno.apellido}"></td>
+
+                <td data-th-text="${alumno.promedio}"></td>
+
+                <td>
+                    <a data-th-href="@{/alumnos/buscar(dni=${alumno.dni})}">
+                        Editar
+                    </a>
+
+                    <form
+                        data-th-action="@{/alumnos/eliminar}"
+                        method="post"
+                        style="display: inline;">
+
+                        <input
+                            type="hidden"
+                            name="dni"
+                            data-th-value="${alumno.dni}">
+
+                        <button
+                            type="submit"
+                            onclick="return confirm('¿Eliminar alumno?')">
+                            Eliminar
+                        </button>
+
+                    </form>
+                </td>
+
+            </tr>
+        </tbody>
+    </table>
+
+    <br>
+
+    <a href="/">Volver al inicio</a>
+
+</body>
+
+</html>
