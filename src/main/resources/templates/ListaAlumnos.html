@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Lista de alumnos</title>
+    <link rel="stylesheet" href="/css/estilos.css">
+</head>
+
+<body>
+
+    <h1>Lista de alumnos</h1>
+
+    <button onclick="listarAlumnos()">
+        Actualizar
+    </button>
+
+    <p id="mensaje"></p>
+
+    <table border="1">
+        <thead>
+            <tr>
+                <th>DNI</th>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>Promedio</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+
+        <tbody id="tablaAlumnos"></tbody>
+    </table>
+
+    <script src="/js/alumnos.js"></script>
+    <script src="/js/eliminar-alumno.js"></script>
+
+</body>
+
+</html>
