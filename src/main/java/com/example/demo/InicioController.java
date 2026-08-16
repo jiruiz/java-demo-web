@@ -2,6 +2,7 @@ package com.example.demo;
 
 import com.example.demo.model.Alumno;
 import com.example.demo.repository.AlumnoRepository;
+import java.util.List;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -45,13 +46,27 @@ public class InicioController {
     @PostMapping("/alumnos/editar")
     public String modificarAlumno(@ModelAttribute Alumno alumno) {
         alumnoRepository.save(alumno);
-        return "redirect:/";
+        return "redirect:/lista";
     }
-    
 
     //Listado para consumir desde templates/ListaAlumnos.html utilizando Thymeleaf utilizando este controller (InicioController, porque devuelve una página HTML de Thymeleaf)
     @GetMapping("/lista")
-    public String mostrarLista() {
+    public String mostrarLista(Model model) {
+
+        List<Alumno> alumnos = alumnoRepository.findAll();
+
+        model.addAttribute("alumnos", alumnos);
+
         return "ListaAlumnos";
+    }
+
+    @PostMapping("/alumnos/eliminar")
+    public String eliminarAlumno(@RequestParam Integer dni) {
+
+        if (alumnoRepository.existsById(dni)) {
+            alumnoRepository.deleteById(dni);
+        }
+
+        return "redirect:/lista";
     }
 }

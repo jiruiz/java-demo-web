@@ -11,11 +11,10 @@
 
     <h1>Lista de alumnos</h1>
 
-    <button onclick="listarAlumnos()">
-        Actualizar
-    </button>
-
-    <p id="mensaje"></p>
+    <p
+        data-th-if="${mensaje}"
+        data-th-text="${mensaje}">
+    </p>
 
     <table border="1">
         <thead>
@@ -28,11 +27,48 @@
             </tr>
         </thead>
 
-        <tbody id="tablaAlumnos"></tbody>
+        <tbody>
+            <tr data-th-each="alumno : ${alumnos}">
+
+                <td data-th-text="${alumno.dni}"></td>
+
+                <td data-th-text="${alumno.nombre}"></td>
+
+                <td data-th-text="${alumno.apellido}"></td>
+
+                <td data-th-text="${alumno.promedio}"></td>
+
+                <td>
+                    <a data-th-href="@{/alumnos/buscar(dni=${alumno.dni})}">
+                        Editar
+                    </a>
+
+                    <form
+                        data-th-action="@{/alumnos/eliminar}"
+                        method="post"
+                        style="display: inline;">
+
+                        <input
+                            type="hidden"
+                            name="dni"
+                            data-th-value="${alumno.dni}">
+
+                        <button
+                            type="submit"
+                            onclick="return confirm('¿Eliminar alumno?')">
+                            Eliminar
+                        </button>
+
+                    </form>
+                </td>
+
+            </tr>
+        </tbody>
     </table>
 
-    <script src="/js/alumnos.js"></script>
-    <script src="/js/eliminar-alumno.js"></script>
+    <br>
+
+    <a href="/">Volver al inicio</a>
 
 </body>
 
