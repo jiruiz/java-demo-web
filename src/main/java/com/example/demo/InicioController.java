@@ -54,7 +54,6 @@ public class InicioController {
     public String mostrarLista(Model model) {
 
         List<Alumno> alumnos = alumnoRepository.findAll();
-
         model.addAttribute("alumnos", alumnos);
 
         return "ListaAlumnos";
@@ -68,5 +67,12 @@ public class InicioController {
         }
 
         return "redirect:/lista";
+    }
+    
+    
+    ////controller de consumo de la api
+    @GetMapping("/lista-api")
+    public String mostrarListaApi() {
+        return "ListaAlumnosApi";
     }
 }

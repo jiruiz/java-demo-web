@@ -153,3 +153,328 @@ Completar el ABM agregando al controlador:
 - `POST /api/alumnos` para crear.
 - `PUT /api/alumnos/{dni}` para modificar.
 - `DELETE /api/alumnos/{dni}` para eliminar.
+
+---
+
+# Configuración de usuarios, roles y login
+
+Esta sección documenta cómo se agregó autenticación con Spring Security y
+contraseñas cifradas con BCrypt.
+
+## Flujo del login
+
+```text
+Formulario /login
+       |
+       v
+Spring Security
+       |
+       v
+CustomUserDetailsService
+       |
+       v
+UserRepository -> tabla usuarios
+       |
+       v
+BCrypt compara la contraseña ingresada con el hash guardado
+```
+
+BCrypt es un algoritmo de hash. La contraseña original no se guarda ni se
+puede recuperar. Durante el login se usa `matches()` para comprobarla.
+
+## 1. Dependencia de Spring Security
+
+Agregar en `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+```
+
+`spring-boot-starter-security` ya incluye las clases necesarias para usar
+BCrypt, por lo que no hace falta declarar `spring-security-crypto` por
+separado.
+
+## 2. Roles
+
+Archivo:
+
+```text
+src/main/java/com/example/demo/model/Role.java
+```
+
+```java
+package com.example.demo.model;
+
+public enum Role {
+    USER,
+    ADMIN
+}
+```
+
+`USER` representa un usuario común y `ADMIN` un administrador.
+
+## 3. Entidad User
+
+Archivo:
+
+```text
+src/main/java/com/example/demo/model/User.java
+```
+
+Campos principales:
+
+```java
+@Entity
+@Table(name = "usuarios")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(unique = true, nullable = false)
+    private String usuario;
+
+    @Column(nullable = false)
+    private String clave;
+
+    private String datosPersonales;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role = Role.USER;
+}
+```
+
+Con `spring.jpa.hibernate.ddl-auto=update`, Hibernate crea o actualiza la tabla
+`usuarios`. `EnumType.STRING` guarda el rol como `USER` o `ADMIN` en lugar de
+un número.
+
+## 4. Repositorio de usuarios
+
+Archivo:
+
+```text
+src/main/java/com/example/demo/repository/UserRepository.java
+```
+
+```java
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByUsuario(String usuario);
+}
+```
+
+`findByUsuario` se usa para comprobar si el usuario existe y para buscarlo
+durante el login.
+
+## 5. Cifrar contraseñas antes de guardar
+
+El `PasswordEncoder` se declara en `SecurityConfig`. Después se inyecta en
+`UserService`:
+
+```java
+@Service
+public class UserService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public UserService(UserRepository userRepository,
+                       PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    public User guardar(User user) {
+        user.setClave(passwordEncoder.encode(user.getClave()));
+        return userRepository.save(user);
+    }
+
+    public boolean claveCorrecta(User user, String claveIngresada) {
+        return passwordEncoder.matches(claveIngresada, user.getClave());
+    }
+}
+```
+
+Para crear usuarios se debe llamar a `userService.guardar(user)`. No se debe
+usar directamente `userRepository.save(user)`, porque así la contraseña podría
+guardarse sin cifrar.
+
+## 6. Cargar el usuario desde Spring Security
+
+`CustomUserDetailsService` implementa `UserDetailsService`, busca el usuario en
+la base de datos y adapta nuestro modelo al formato esperado por Spring:
+
+```java
+@Service
+public class CustomUserDetailsService implements UserDetailsService {
+
+    private final UserRepository repository;
+
+    public CustomUserDetailsService(UserRepository repository) {
+        this.repository = repository;
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String usuario) {
+        User user = repository.findByUsuario(usuario)
+                .orElseThrow(() ->
+                    new UsernameNotFoundException("Usuario no encontrado")
+                );
+
+        return org.springframework.security.core.userdetails.User
+                .withUsername(user.getUsuario())
+                .password(user.getClave())
+                .roles(user.getRole().name())
+                .build();
+    }
+}
+```
+
+## 7. Configuración de seguridad
+
+En `SecurityConfig` se configura BCrypt, el formulario de login y las rutas:
+
+```java
+@Configuration
+public class SecurityConfig {
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+            throws Exception {
+
+        return http
+                .authorizeHttpRequests(auth -> auth
+                    .requestMatchers("/login", "/css/**", "/js/**").permitAll()
+                    .requestMatchers("/admin/**").hasRole("ADMIN")
+                    .anyRequest().authenticated()
+                )
+                .formLogin(form -> form
+                    .loginPage("/login")
+                    .defaultSuccessUrl("/", true)
+                    .permitAll()
+                )
+                .logout(logout -> logout
+                    .logoutSuccessUrl("/login?logout")
+                )
+                .build();
+    }
+}
+```
+
+- `/login`, CSS y JavaScript son públicos.
+- `/admin/**` requiere el rol `ADMIN`.
+- Las demás rutas requieren haber iniciado sesión.
+
+## 8. Controlador y formulario de login
+
+El controlador devuelve la plantilla `login.html`:
+
+```java
+@Controller
+public class LoginController {
+
+    @GetMapping("/login")
+    public String login() {
+        return "login";
+    }
+}
+```
+
+Formulario ubicado en `src/main/resources/templates/login.html`:
+
+```html
+<p data-th-if="${param.error}">Usuario o contraseña incorrectos</p>
+<p data-th-if="${param.logout}">Sesión cerrada correctamente</p>
+
+<form data-th-action="@{/login}" method="post">
+    <label>Usuario:</label>
+    <input type="text" name="username" required>
+
+    <label>Contraseña:</label>
+    <input type="password" name="password" required>
+
+    <button type="submit">Ingresar</button>
+</form>
+```
+
+Los nombres `username` y `password` son los nombres que Spring Security espera
+por defecto. Se usa `data-th-*` para que Thymeleaf funcione sin advertencias del
+validador HTML de NetBeans.
+
+## 9. Crear un administrador inicial
+
+`DatosIniciales.java` está junto a `DemoApplication.java`:
+
+```text
+src/main/java/com/example/demo/DatosIniciales.java
+```
+
+El `CommandLineRunner` se ejecuta al iniciar la aplicación:
+
+```java
+@Bean
+CommandLineRunner crearAdmin(UserRepository repository,
+                             UserService userService) {
+    return args -> {
+        if (repository.findByUsuario("admin").isEmpty()) {
+            User user = new User();
+            user.setUsuario("admin");
+            user.setClave("1234");
+            user.setDatosPersonales("Administrador");
+            user.setRole(Role.ADMIN);
+
+            userService.guardar(user);
+        }
+    };
+}
+```
+
+El `if` evita volver a crear el usuario o cifrar nuevamente su contraseña cada
+vez que inicia la aplicación.
+
+Credenciales de práctica:
+
+```text
+Usuario: admin
+Contraseña: 1234
+```
+
+En una aplicación real, la contraseña inicial no debe quedar escrita en el
+código fuente.
+
+## 10. Error por `passwordEncoder` duplicado
+
+Si aparece este error:
+
+```text
+A bean with that name has already been defined
+```
+
+significa que existe un método `passwordEncoder()` tanto en
+`PasswordConfig.java` como en `SecurityConfig.java`. Debe existir un solo bean.
+En este proyecto se conserva el de `SecurityConfig` y se elimina
+`PasswordConfig.java`.
+
+No es necesario habilitar:
+
+```properties
+spring.main.allow-bean-definition-overriding=true
+```
+
+## 11. Probar el login
+
+1. Ejecutar la aplicación.
+2. Abrir `http://localhost:8081/login`.
+3. Ingresar con `admin` y `1234`.
+4. Spring Security busca al usuario en MySQL.
+5. BCrypt compara la clave ingresada con el hash guardado.
+6. Si es correcta, redirige a `/`.
